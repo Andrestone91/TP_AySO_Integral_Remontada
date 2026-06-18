@@ -2,8 +2,18 @@ version: '3'
 
 services:
     web:
-        image: 
+        image: nazamoreeno/tp-div_313:latest
+        # usuario2/tp-div_313:latest
+        # usuario3/tp-div_313:latest
+        # usuario4/tp-div_313:latest
+        # usuario5/tp-div_313:latest
+
+        container_name: tp_nginx_container
+
         ports:
-            - 
+            - 8081:80
+
         volumes:
-            - 
+            - ./web:/usr/share/nginx/html
+
+        restart: always
