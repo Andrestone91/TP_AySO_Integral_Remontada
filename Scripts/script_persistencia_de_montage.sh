@@ -1,35 +1,55 @@
 #!/bin/bash
 
-echo "Inicio script montaje persistente"
-
-echo "Creando puntos de montaje"
-
-sudo mkdir -p /var/lib/docker
-sudo mkdir -p /work
-
-echo "Agregando entradas en /etc/fstab"
-
-if ! grep -q "vg_datos-lv_docker" /etc/fstab; then
-    echo "/dev/mapper/vg_datos-lv_docker /var/lib/docker ext4 defaults 0 0" | sudo tee -a /etc/fstab
+if [ "$EUID" -ne 0 ]; then
+  echo "Ejecutar como root"
+  exit 1
 fi
 
-if ! grep -q "vg_datos-lv_workareas" /etc/fstab; then
-    echo "/dev/mapper/vg_datos-lv_workareas /work ext4 defaults 0 0" | sudo tee -a /etc/fstab
-fi
+DISCO_5G="/dev/sdc"
+DISCO_3G="/dev/sdd"
+DISCO_2G="/dev/sde"
 
-if ! grep -q "vg_temp-lv_swap" /etc/fstab; then
-    echo "/dev/mapper/vg_temp-lv_swap none swap defaults 0 0" | sudo tee -a /etc/fstab
-fi
+MNT_5G="/mnt/disco_5g"
+MNT_3G="/mnt/disco_3g"
+MNT_2G="/mnt/disco_2g"
 
-echo "Aplicando montajes persistentes"
+formatear_si_hace_falta() {
+  DISCO=$1
 
-sudo systemctl daemon-reload
-sudo mount -a
-sudo swapon /dev/mapper/vg_temp-lv_swap
+  if blkid "$DISCO" > /dev/null 2>&1; then
+    echo "$DISCO ya tiene formato. No se formatea."
+  else
+    echo "Formateando $DISCO..."
+    mkfs.ext4 -F "$DISCO"
+  fi
+}
 
-echo "Validacion"
+agregar_fstab_si_hace_falta() {
+  DISCO=$1
+  PUNTO_MONTAJE=$2
 
-df -h
-lsblk -f
+  UUID_DISCO=$(blkid -s UUID -o value "$DISCO")
 
-echo "Fin script montaje persistente"
+  if grep -q "$UUID_DISCO" /etc/fstab; then
+    echo "$DISCO ya está en /etc/fstab."
+  else
+    echo "Agregando $DISCO a /etc/fstab..."
+    echo "UUID=$UUID_DISCO $PUNTO_MONTAJE ext4 defaults 0 0" >> /etc/fstab
+  fi
+}
+
+mkdir -p "$MNT_5G"
+mkdir -p "$MNT_3G"
+mkdir -p "$MNT_2G"
+
+formatear_si_hace_falta "$DISCO_5G"
+formatear_si_hace_falta "$DISCO_3G"
+formatear_si_hace_falta "$DISCO_2G"
+
+agregar_fstab_si_hace_falta "$DISCO_5G" "$MNT_5G"
+agregar_fstab_si_hace_falta "$DISCO_3G" "$MNT_3G"
+agregar_fstab_si_hace_falta "$DISCO_2G" "$MNT_2G"
+
+mount -a
+
+echo "Persistencia de montaje configurada correctamente."

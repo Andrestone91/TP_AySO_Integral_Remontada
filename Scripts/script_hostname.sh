@@ -1,14 +1,17 @@
 #!/bin/bash
 
-echo "Agregando nombres de VM en /etc/hosts"
-
-if ! grep -q "VM1-Testing" /etc/hosts; then
-    echo "192.168.56.10 VM1-Testing" | sudo tee -a /etc/hosts
+if [ "$EUID" -ne 0 ]; then
+  echo "Ejecutar como root"
+  exit 1
 fi
 
-if ! grep -q "VM2-Produccion" /etc/hosts; then
-    echo "192.168.56.11 VM2-Produccion" | sudo tee -a /etc/hosts
+HOSTNAME_NUEVO="$1"
+
+if [ -z "$HOSTNAME_NUEVO" ]; then
+  echo "Uso: ./script_hostname.sh NOMBRE_HOST"
+  exit 1
 fi
 
-echo "Contenido actual de /etc/hosts:"
-cat /etc/hosts
+hostnamectl set-hostname "$HOSTNAME_NUEVO"
+
+echo "Hostname configurado como: $HOSTNAME_NUEVO"
